@@ -33,7 +33,7 @@ class _iterator {
 		return tmp;
 	}
 
-	friend bool operator==(const _iterator& x, const _iterator& y) { return x.current = y.current; }
+	friend bool operator==(const _iterator& x, const _iterator& y) { return x.current == y.current; }
 
 	friend bool operator!=(const _iterator& x, const _iterator& y) { return !(x == y); }
 };
@@ -68,7 +68,7 @@ class list_pool {
 
 	explicit list_pool(size_type n) { pool.reserve(n); }
 
-	using iterator = _iterator<std::vector<node_t>*, list_type, value_type>;
+	using iterator = _iterator<std::vector<node_t>, list_type, value_type>;
 	using const_iterator = _iterator<std::vector<node_t>*, list_type, const value_type>;
 
 	// Iterators
