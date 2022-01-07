@@ -65,26 +65,28 @@ class list_pool {
 
    public:
 	list_pool() noexcept = default;
+    ~list_pool() noexcept = default;
 
 	explicit list_pool(size_type n) { pool.reserve(n); }
 
 	using iterator = _iterator<std::vector<node_t>, list_type, value_type>;
-	using const_iterator = _iterator<std::vector<node_t>*, list_type, const value_type>;
+	using const_iterator = _iterator<std::vector<node_t>, list_type, const value_type>;
 
 	// Iterators
 	// add the space after clang-format in end()
 	iterator begin(list_type x) { return iterator(&pool, x); }
-	iterator end(list_type) { return iterator(&pool, end()); }
+	iterator end(list_type ) { return iterator(&pool, end()); }
 	const_iterator begin(list_type x) const { return const_iterator(&pool, x); }
-	const_iterator end(list_type) const { return const_iterator(&pool, end()); }
+	const_iterator end(list_type ) const { return const_iterator(&pool, end()); }
 	const_iterator cbegin(list_type x) const { return const_iterator(&pool, x); }
-	const_iterator cend(list_type) const { return const_iterator(&pool, end()); }
+	const_iterator cend(list_type ) const { return const_iterator(&pool, end()); }
 
 	list_type new_list() noexcept { return end(); }
 
 	void reserve(size_type n) { pool.reserve(n); }
 
 	size_type capacity() const noexcept { return pool.capacity(); }
+	size_type size() const noexcept { return pool.size(); }
 
 	bool is_empty(list_type x) const noexcept { return x == end(); }
 
@@ -96,11 +98,12 @@ class list_pool {
 	list_type& next(list_type x) { return node(x).next; }
 	const list_type& next(list_type x) const { return node(x).next; }
 
-	list_type _push_front(value_type&& val, list_type head) {
+	template <typename X>
+	list_type _push_front(X&& val, list_type head) {
 		if (free_node_list) {
 			auto head_new = free_node_list;
-			free_node_list = node(head_new).next;
-			node(head_new).value = std::forward<value_type>(val);
+			free_node_list = next(free_node_list);
+			value(head_new) = std::forward<X>(val);
 			if (is_empty(head)) {
 				next(head_new) = end();
 			} else {
@@ -109,12 +112,11 @@ class list_pool {
 			return head_new;
 		} else {
 			if (is_empty(head)) {
-				pool.emplace_back(std::forward<value_type>(val), end());
+				pool.emplace_back(std::forward<X>(val), end());
 			} else {
-				pool.emplace_back(std::forward<value_type>(val), head);
-				return pool.size();
+				pool.emplace_back(std::forward<X>(val), head);
 			}
-			return head;
+			return pool.size();
 		}
 	}
 
@@ -122,41 +124,38 @@ class list_pool {
 
 	list_type push_front(T&& val, list_type head) { return _push_front(std::move(val), head); }
 
-	list_type get_last_node(list_type head) {
-		list_type tmp = head;
-		while (next(tmp) != end()) {
-			tmp = next(tmp);
-		}
-		return tmp;
-	}
-
-	list_type _push_back(value_type&& val, list_type head) {
+	template <typename X>
+	list_type _push_back(X&& val, list_type head) {
 		if (is_empty(head)) {
-			return push_front(std::forward<value_type>(val), head);
+			return push_front(std::forward<X>(val), head);
 		}
-		auto last = get_last_node(head);
+		list_type last = head;
+		while (next(last) != end()) {
+			last = next(last);
+		}
 		if (free_node_list) {
 			auto tail_new = free_node_list;
-			free_node_list = node(tail_new).next;
-			node(tail_new).value = std::forward<value_type>(val);
+			free_node_list = next(free_node_list);
+			value(tail_new) = std::forward<X>(val);
 			next(tail_new) = end();
 			next(last) = tail_new;
 		} else {
-			pool.emplace_back(std::forward<value_type>(val), end());
+			pool.emplace_back(std::forward<X>(val), end());
 			next(last) = pool.size();
 		}
 		return head;
 	}
 
+	list_type push_back(const T& val, list_type head) { return _push_back(val, head); }
+	
 	list_type push_back(T&& val, list_type head) { return _push_back(std::move(val), head); }
 
-	list_type push_back(const T& val, list_type head) { return _push_back(val, head); }
 
 	list_type free(list_type x) {
 		if (x == end())
 			return x;
-		auto tmp = node(x).next;
-		node(x).next = free_node_list;
+		auto tmp = next(x);
+		next(x) = free_node_list;
 		free_node_list = x;
 		return tmp;
 	}
