@@ -33,11 +33,14 @@ class _iterator {
 		return tmp;
 	}
 
-	friend bool operator==(const _iterator& x, const _iterator& y) { return x.current == y.current; }
+	friend bool operator==(const _iterator& x, const _iterator& y) {
+		return x.current == y.current;
+	}
 
 	friend bool operator!=(const _iterator& x, const _iterator& y) { return !(x == y); }
 };
 
+// Linked List Pool
 template <typename T, typename N = std::size_t>
 class list_pool {
 	struct node_t {
@@ -60,12 +63,61 @@ class list_pool {
 	list_type free_node_list = end();
 
 	node_t& node(list_type x) noexcept { return pool[x - 1]; }
-
 	const node_t& node(list_type x) const noexcept { return pool[x - 1]; }
+
+	// push_front driver function
+	list_type _push_front(value_type&& val, list_type head) {
+		if (free_node_list) {
+			auto head_new = free_node_list;
+			free_node_list = next(free_node_list);
+			value(head_new) = std::forward<value_type>(val);
+			if (is_empty(head)) {
+				next(head_new) = end();
+			} else {
+				next(head_new) = head;
+			}
+			return head_new;
+		} else {
+			if (is_empty(head)) {
+				pool.emplace_back(std::forward<value_type>(val), end());
+			} else {
+				pool.emplace_back(std::forward<value_type>(val), head);
+			}
+			return size();
+		}
+	}
+
+	// helper function to get the last node
+	list_type get_last_node(list_type head) {
+		list_type tmp = head;
+		while (next(tmp) != end()) {
+			tmp = next(tmp);
+		}
+		return tmp;
+	}
+
+	// push_back driver function
+	list_type _push_back(value_type&& val, list_type head) {
+		if (is_empty(head)) {
+			return push_front(std::forward<value_type>(val), head);
+		}
+		list_type last = get_last_node(head);
+		if (free_node_list) {
+			auto tail_new = free_node_list;
+			free_node_list = next(free_node_list);
+			value(tail_new) = std::forward<value_type>(val);
+			next(tail_new) = end();
+			next(last) = tail_new;
+		} else {
+			pool.emplace_back(std::forward<value_type>(val), end());
+			next(last) = size();
+		}
+		return head;
+	}
 
    public:
 	list_pool() noexcept = default;
-    ~list_pool() noexcept = default;
+	~list_pool() noexcept = default;
 
 	explicit list_pool(size_type n) { pool.reserve(n); }
 
@@ -76,8 +128,10 @@ class list_pool {
 	// add the space after clang-format in end()
 	iterator begin(list_type x) { return iterator(&pool, x); }
 	iterator end(list_type ) { return iterator(&pool, end()); }
+
 	const_iterator begin(list_type x) const { return const_iterator(&pool, x); }
 	const_iterator end(list_type ) const { return const_iterator(&pool, end()); }
+
 	const_iterator cbegin(list_type x) const { return const_iterator(&pool, x); }
 	const_iterator cend(list_type ) const { return const_iterator(&pool, end()); }
 
@@ -86,6 +140,7 @@ class list_pool {
 	void reserve(size_type n) { pool.reserve(n); }
 
 	size_type capacity() const noexcept { return pool.capacity(); }
+
 	size_type size() const noexcept { return pool.size(); }
 
 	bool is_empty(list_type x) const noexcept { return x == end(); }
@@ -98,58 +153,11 @@ class list_pool {
 	list_type& next(list_type x) { return node(x).next; }
 	const list_type& next(list_type x) const { return node(x).next; }
 
-	template <typename X>
-	list_type _push_front(X&& val, list_type head) {
-		if (free_node_list) {
-			auto head_new = free_node_list;
-			free_node_list = next(free_node_list);
-			value(head_new) = std::forward<X>(val);
-			if (is_empty(head)) {
-				next(head_new) = end();
-			} else {
-				next(head_new) = head;
-			}
-			return head_new;
-		} else {
-			if (is_empty(head)) {
-				pool.emplace_back(std::forward<X>(val), end());
-			} else {
-				pool.emplace_back(std::forward<X>(val), head);
-			}
-			return pool.size();
-		}
-	}
-
 	list_type push_front(const T& val, list_type head) { return _push_front(val, head); }
-
 	list_type push_front(T&& val, list_type head) { return _push_front(std::move(val), head); }
 
-	template <typename X>
-	list_type _push_back(X&& val, list_type head) {
-		if (is_empty(head)) {
-			return push_front(std::forward<X>(val), head);
-		}
-		list_type last = head;
-		while (next(last) != end()) {
-			last = next(last);
-		}
-		if (free_node_list) {
-			auto tail_new = free_node_list;
-			free_node_list = next(free_node_list);
-			value(tail_new) = std::forward<X>(val);
-			next(tail_new) = end();
-			next(last) = tail_new;
-		} else {
-			pool.emplace_back(std::forward<X>(val), end());
-			next(last) = pool.size();
-		}
-		return head;
-	}
-
 	list_type push_back(const T& val, list_type head) { return _push_back(val, head); }
-	
 	list_type push_back(T&& val, list_type head) { return _push_back(std::move(val), head); }
-
 
 	list_type free(list_type x) {
 		if (x == end())
